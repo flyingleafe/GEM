@@ -48,19 +48,17 @@ class HOPE(StaticGraphEmbedding):
     def get_method_summary(self):
         return '%s_%d' % (self._method_name, self._d)
 
-    def learn_embedding(self, graph=None, edge_f=None,
-                        is_weighted=False, no_python=False):
+    def learn_embedding(self, graph=None, edge_f=None, nodelist=None,
+                        weight='weight'):
         if not graph and not edge_f:
             raise Exception('graph/edge_f needed')
         if not graph:
             graph = graph_util.loadGraphFromEdgeListTxt(edge_f)
+        if not nodelist:
+            nodelist = sorted(graph.nodes)
 
-        t1 = time()
-        # A = nx.to_scipy_sparse_matrix(graph)
-        # I = sp.eye(graph.number_of_nodes())
-        # M_g = I - self._beta*A
-        # M_l = self._beta*A
-        A = nx.to_numpy_matrix(graph)
+        # Using Katz index as a similarity measure
+        A = nx.to_numpy_matrix(graph, nodelist=nodelist, weight=weight)
         M_g = np.eye(graph.number_of_nodes()) - self._beta * A
         M_l = self._beta * A
         S = np.dot(np.linalg.inv(M_g), M_l)
@@ -68,13 +66,11 @@ class HOPE(StaticGraphEmbedding):
         u, s, vt = lg.svds(S, k=self._d // 2)
         X1 = np.dot(u, np.diag(np.sqrt(s)))
         X2 = np.dot(vt.T, np.diag(np.sqrt(s)))
-        t2 = time()
         self._X = np.concatenate((X1, X2), axis=1)
 
         p_d_p_t = np.dot(u, np.dot(np.diag(s), vt))
         eig_err = np.linalg.norm(p_d_p_t - S)
-        print('SVD error (low rank): %f' % eig_err)
-        return self._X, (t2 - t1)
+        return self._X, eig_err
 
     def get_embedding(self):
         return self._X
