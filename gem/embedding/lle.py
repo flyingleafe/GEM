@@ -56,16 +56,14 @@ class LocallyLinearEmbedding(StaticGraphEmbedding):
         if not graph:
             graph = graph_util.loadGraphFromEdgeListTxt(edge_f)
         graph = graph.to_undirected()
-        t1 = time()
         A = nx.to_scipy_sparse_matrix(graph)
         normalize(A, norm='l1', axis=1, copy=False)
         I_n = sp.eye(graph.number_of_nodes())
         I_min_A = I_n - A
         u, s, vt = lg.svds(I_min_A, k=self._d + 1, which='SM')
-        t2 = time()
         self._X = vt.T
         self._X = self._X[:, 1:]
-        return self._X, (t2 - t1)
+        return self._X
 
     def get_embedding(self):
         return self._X

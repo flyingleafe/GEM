@@ -22,7 +22,6 @@ from .static_graph_embedding import StaticGraphEmbedding
 from gem.utils import graph_util, plot_util
 from gem.evaluation import visualize_embedding as viz
 
-
 class LaplacianEigenmaps(StaticGraphEmbedding):
 
     def __init__(self, *hyper_dict, **kwargs):
@@ -54,17 +53,14 @@ class LaplacianEigenmaps(StaticGraphEmbedding):
         if not graph:
             graph = graph_util.loadGraphFromEdgeListTxt(edge_f)
         graph = graph.to_undirected()
-        t1 = time()
         L_sym = nx.normalized_laplacian_matrix(graph)
 
         w, v = lg.eigs(L_sym, k=self._d + 1, which='SM')
-        t2 = time()
         self._X = v[:, 1:]
 
         p_d_p_t = np.dot(v, np.dot(np.diag(w), v.T))
         eig_err = np.linalg.norm(p_d_p_t - L_sym)
-        print('Laplacian matrix recon. error (low rank): %f' % eig_err)
-        return self._X, (t2 - t1)
+        return self._X, eig_err
 
     def get_embedding(self):
         return self._X

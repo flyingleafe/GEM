@@ -48,19 +48,28 @@ class HOPE(StaticGraphEmbedding):
     def get_method_summary(self):
         return '%s_%d' % (self._method_name, self._d)
 
-    def learn_embedding(self, graph=None, edge_f=None, nodelist=None,
-                        weight='weight'):
-        if not graph and not edge_f:
-            raise Exception('graph/edge_f needed')
-        if not graph:
-            graph = graph_util.loadGraphFromEdgeListTxt(edge_f)
-        if not nodelist:
-            nodelist = sorted(graph.nodes)
+    def learn_embedding(self, graph=None, edge_f=None, amatrix=None,
+                        nodelist=None, weight='weight'):
+        if graph is None and edge_f is None and amatrix is None:
+            raise Exception('graph/edge_f/amatrix needed')
 
-        # Using Katz index as a similarity measure
-        A = nx.to_numpy_matrix(graph, nodelist=nodelist, weight=weight)
-        M_g = np.eye(graph.number_of_nodes()) - self._beta * A
-        M_l = self._beta * A
+        if amatrix is None:
+            if graph is None:
+                graph = graph_util.loadGraphFromEdgeListTxt(edge_f)
+            if nodelist is None:
+                nodelist = sorted(graph.nodes)
+            A = nx.to_numpy_matrix(graph, nodelist=nodelist, weight=weight)
+            n = graph.number_of_nodes()
+        else:
+            A = np.mat(amatrix)
+            n = A.shape[0]
+
+        if self._proximity == 'katz':
+            M_g = np.eye(n) - self._beta * A
+            M_l = self._beta * A
+        elif self._proximity == 'common-neighbors':
+            M_g = np.eye(n)
+            M_l = A * A
         S = np.dot(np.linalg.inv(M_g), M_l)
 
         u, s, vt = lg.svds(S, k=self._d // 2)
